@@ -3,9 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/spf13/viper"
 	"github.com/tebeka/selenium"
 )
 
@@ -25,6 +29,28 @@ func click(wd selenium.WebDriver, arr []string) {
 			log.Panic(err, v)
 		}
 	}
+}
+
+var (
+	liststr string
+	tempMax float64
+	tempMin float64
+	emplid  string
+)
+
+func init() {
+	viper.SetConfigType("toml")
+	viper.SetConfigFile("./config/config.toml") // 指定配置文件路徑
+	viper.AddConfigPath("./config")
+	err := viper.ReadInConfig() // 查找並讀取配置文件
+	if err != nil {             // 處理讀取配置文件的錯誤
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+	liststr = viper.GetString("list.list")
+	tempMax = viper.GetFloat64("temperature.tempMax")
+	tempMin = viper.GetFloat64("temperature.tempMin")
+	emplid = viper.GetString("profile.emplid")
+
 }
 func main() {
 	// Start a WebDriver server instance
@@ -50,8 +76,8 @@ func main() {
 	if err := wd.Get("https://zh.surveymonkey.com/r/EmployeeHealthcheck"); err != nil {
 		panic(err)
 	}
-	list := []string{"#\\36 83674386_4495696088", "#\\36 83674383", "#\\36 83674388_4495696090", "#\\36 83674400_4495696174", "#\\36 83674393_4495696115",
-		"#\\36 83711504_4495952679", "#\\36 83674394_4495717677", "#\\36 83674398_4495718982", "#\\36 83674395_4495696119", "#\\36 83674397_4495696166", "#\\36 83674385_4495696080"}
+	//click
+	list := strings.Split(liststr, ",")
 	click(wd, list)
 
 	// Click the emplid button.
@@ -59,16 +85,21 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := btn.SendKeys("092844"); err != nil {
+	if err := btn.SendKeys(emplid); err != nil {
 		panic(err)
 	}
 
 	// Click the temperature button.
+	//get random temperature
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	temperature := math.Round((r1.Float64()*(tempMax-tempMin)+tempMin)*1000) / 1000
+	tempStr := fmt.Sprintf("%.2f", temperature)
 	btn, err = wd.FindElement(selenium.ByCSSSelector, "#\\36 83674384")
 	if err != nil {
 		panic(err)
 	}
-	if err = btn.SendKeys("36"); err != nil {
+	if err = btn.SendKeys(tempStr); err != nil {
 		panic(err)
 	}
 
